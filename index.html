@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quanto trampo deu?</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script>
+        // Tailwind config
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Main Card -->
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+        
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">
+            Quanto trampo deu?
+        </h1>
+        <p class="text-center text-gray-600 mb-8">
+            Descubra quanto tempo do seu trabalho é necessário para comprar o que você deseja.
+        </p>
+
+        <!-- Calculator Form -->
+        <form id="calculator-form" class="space-y-5">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Qual seu nome?</label>
+                <input type="text" id="name" name="name" placeholder="Ex: João" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+            </div>
+
+            <div>
+                <label for="salary" class="block text-sm font-medium text-gray-700">Qual seu salário líquido mensal?</label>
+                <div class="relative mt-1">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">R$</span>
+                    <input type="number" id="salary" name="salary" placeholder="Ex: 3000" class="pl-10 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+            </div>
+
+            <div>
+                <label for="product" class="block text-sm font-medium text-gray-700">O que você quer comprar?</label>
+                <input type="text" id="product" name="product" placeholder="Ex: Um celular novo" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+            </div>
+
+            <div>
+                <label for="cost" class="block text-sm font-medium text-gray-700">Quanto custa esse produto?</label>
+                 <div class="relative mt-1">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">R$</span>
+                    <input type="number" id="cost" name="cost" placeholder="Ex: 1500" class="pl-10 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <button type="button" id="calculate-btn" class="w-full bg-blue-600 text-white p-4 rounded-lg font-bold text-lg shadow-lg hover:bg-blue-700 transition duration-300 ease-in-out transform hover:-translate-y-0.5">
+                Calcular
+            </button>
+            
+            <button type="button" id="reset-btn" class="w-full bg-gray-200 text-gray-700 p-2 rounded-lg font-medium hover:bg-gray-300 transition">
+                Limpar
+            </button>
+        </form>
+
+        <!-- Result Area -->
+        <div id="result-area" class="mt-8 text-center">
+            <!-- Result will be injected here by JS -->
+        </div>
+
+    </div>
+
+    <script>
+        // --- Calculation Constants ---
+        // Based on 22 work days/month, 8 hours/day.
+        const WORK_DAYS_PER_MONTH = 22;
+        const HOURS_PER_WORK_DAY = 8;
+        const MINUTES_PER_HOUR = 60;
+        
+        // Derived constants for easy conversion
+        const MINUTES_PER_DAY = HOURS_PER_WORK_DAY * MINUTES_PER_HOUR; // 480
+        const MINUTES_PER_WEEK = MINUTES_PER_DAY * 5; // 2400 (5-day work week)
+        const MINUTES_PER_MONTH = MINUTES_PER_DAY * WORK_DAYS_PER_MONTH; // 10560
+        const MINUTES_PER_YEAR = MINUTES_PER_MONTH * 12; // 126720
+
+        // --- Element Selectors ---
+        const calculateBtn = document.getElementById('calculate-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const resultDiv = document.getElementById('result-area');
+        const form = document.getElementById('calculator-form');
+
+        // --- Event Listeners ---
+        calculateBtn.addEventListener('click', calculateWorkTime);
+        resetBtn.addEventListener('click', resetCalculator);
+
+        // --- Main Function: Calculate Work Time ---
+        function calculateWorkTime() {
+            // 1. Get values from inputs
+            const friendName = document.getElementById('name').value;
+            const monthlySalary = parseFloat(document.getElementById('salary').value);
+            const productName = document.getElementById('product').value;
+            const productCost = parseFloat(document.getElementById('cost').value);
+
+            // 2. Validate inputs
+            if (!friendName || !productName) {
+                displayError("Por favor, preencha todos os nomes.");
+                return;
+            }
+            if (isNaN(monthlySalary) || monthlySalary <= 0) {
+                displayError("Por favor, insira um salário válido (maior que zero).");
+                return;
+            }
+            if (isNaN(productCost) || productCost < 0) {
+                displayError("Por favor, insira um custo de produto válido.");
+                return;
+            }
+
+            // 3. Perform calculation
+            const salaryPerMinute = monthlySalary / MINUTES_PER_MONTH;
+            
+            // Handle R$ 0,00 cost
+            if (productCost === 0) {
+                 displayResult(friendName, productName, "0 minutos. É de graça!", 0);
+                 return;
+            }
+
+            const minutesRequired = productCost / salaryPerMinute;
+
+            // 4. Format the duration string
+            const formattedDuration = formatDuration(minutesRequired);
+
+            // 5. Display the result
+            displayResult(friendName, productName, formattedDuration, minutesRequired);
+        }
+
+        // --- Helper Function: Format Duration ---
+        function formatDuration(totalMinutes) {
+            // Round to the nearest minute
+            const roundedMinutes = Math.round(totalMinutes);
+            
+            if (roundedMinutes < 1) return "menos de 1 minuto";
+            if (roundedMinutes === 1) return "1 minuto";
+            
+            // Logic to show the most appropriate time unit
+            if (roundedMinutes >= MINUTES_PER_YEAR) {
+                return (roundedMinutes / MINUTES_PER_YEAR).toFixed(1).replace('.', ',') + " anos";
+            }
+            if (roundedMinutes >= MINUTES_PER_MONTH) {
+                 return (roundedMinutes / MINUTES_PER_MONTH).toFixed(1).replace('.', ',') + " meses";
+            }
+            if (roundedMinutes >= MINUTES_PER_WEEK) {
+                 return (roundedMinutes / MINUTES_PER_WEEK).toFixed(1).replace('.', ',') + " semanas";
+            }
+            if (roundedMinutes >= MINUTES_PER_DAY) {
+                return (roundedMinutes / MINUTES_PER_DAY).toFixed(1).replace('.', ',') + " dias";
+            }
+            if (roundedMinutes >= MINUTES_PER_HOUR) {
+                return (roundedMinutes / MINUTES_PER_HOUR).toFixed(1).replace('.', ',') + " horas";
+            }
+            
+            return roundedMinutes + " minutos";
+        }
+        
+        // (Receives totalMinutes to decide on the special message)
+        function displayResult(name, product, duration, totalMinutes) {
+            
+            // Logic for the special "easter egg" messages
+            let specialMessage = "";
+            if (totalMinutes > MINUTES_PER_WEEK) { // More than 1 week of work
+                specialMessage = `
+                    <p classs="text-lg text-amber-700 font-medium mt-4">
+                        Será que vale o trampo? 🤔
+                    </p>
+                `;
+            }
+             if (totalMinutes > MINUTES_PER_MONTH) { // More than 1 month of work
+                specialMessage = `
+                    <p classs="text-xl text-red-700 font-bold mt-4">
+                        Meu salário chora! 😢
+                    </p>
+                `;
+            }
+
+            resultDiv.innerHTML = `
+                <div class="bg-blue-50 border border-blue-200 p-6 rounded-lg">
+                    <p class="text-xl text-gray-800">Ei, <strong>${name}</strong>!</p>
+                    <p class="text-lg text-gray-700 mt-2">
+                        Para comprar <strong>${product}</strong>, você precisa trabalhar por:
+                    </p>
+                    <p class="text-4xl font-extrabold text-blue-600 my-4">
+                        ${duration}
+                    </p>
+                    
+                    <!-- Special message appears here -->
+                    ${specialMessage}
+
+                    <p class="text-xs text-gray-500 mt-4">
+                        (Base de cálculo: ${HOURS_PER_WORK_DAY}h/dia, ${WORK_DAYS_PER_MONTH} dias/mês)
+                    </p>
+                </div>
+            `;
+        }
+
+        function displayError(message) {
+            resultDiv.innerHTML = `
+                <div class="bg-red-50 border border-red-200 p-4 rounded-lg">
+                    <p class="text-red-700 font-medium">${message}</p>
+                </div>
+            `;
+        }
+
+        function resetCalculator() {
+            form.reset(); // Clears form fields
+            resultDiv.innerHTML = ""; // Clears result area
+        }
+
+    </script>
+
+</body>
+</html>
